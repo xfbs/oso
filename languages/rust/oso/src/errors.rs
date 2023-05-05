@@ -1,15 +1,16 @@
-//! # Errors
+//! # Error types used by the Oso library.
 //!
 //! This module contains a collection of error types that can be returned by various calls by the
 //! Oso library.
 use std::fmt;
 use thiserror::Error;
 
+/// Errors returned by the Polar library.
 pub use polar_core::error as polar;
 
 // TODO stack traces????
 
-/// Oso error
+/// Oso error type.
 ///
 /// This enum encompasses all things that can go wrong while using the Oso library. It can also be
 /// used to wrap a custom error message, using the [`OsoError::Custom`] variant or using the
@@ -114,7 +115,7 @@ impl OsoError {
     }
 }
 
-/// These are conditions that should never occur, and indicate a bug in oso.
+/// These are conditions that should never occur, and indicate a bug in Oso.
 #[derive(Error, Debug)]
 pub enum InvariantError {
     #[error("Invalid receiver for method. {0}")]
