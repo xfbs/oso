@@ -1,22 +1,39 @@
-//! Communicate with the Polar virtual machine: load rules, make queries, etc/
-use polar_core::sources::Source;
-use polar_core::terms::{Call, Symbol, Term, Value};
+//! # Oso module
+//!
+//! Communicate with the Polar virtual machine: load rules, make queries, etc.
+use crate::{
+    host::Host, query::Query, FromPolar, OsoError, PolarValue, Result, ToPolar, ToPolarList,
+};
+use polar_core::{
+    polar::Polar,
+    sources::Source,
+    terms::{Call, Symbol, Term, Value},
+};
+use std::{collections::HashSet, fs::File, hash::Hash, io::Read, sync::Arc};
 
-use std::collections::HashSet;
-use std::fs::File;
-use std::hash::Hash;
-use std::io::Read;
-use std::sync::Arc;
-
-use crate::host::Host;
-use crate::query::Query;
-use crate::{FromPolar, OsoError, PolarValue, ToPolar, ToPolarList};
-
-/// Oso is the main struct you interact with. It is an instance of the Oso authorization library
-/// and contains the polar language knowledge base and query engine.
+/// Instance of the Oso authorization library.
+///
+/// This is the main struct you interact with. Contains the polar language knowledge base and query
+/// engine.
+///
+/// # Usage
+///
+/// Typically, you will create a new instance of Oso, load some definitions into it that you
+/// can use to determine authorization and then use [`is_allowed()`](Oso::is_allowed) to check for
+/// authorization.
+///
+/// ```rust
+/// # use oso::Oso;
+/// let mut oso = Oso::new();
+///
+/// // allow any actor to perform read on any resource
+/// oso.load_str(r#"allow(_actor, "read", _resource);"#).unwrap();
+///
+/// assert!(oso.is_allowed("me", "read", "book").unwrap());
+/// ```
 #[derive(Clone)]
 pub struct Oso {
-    inner: Arc<polar_core::polar::Polar>,
+    inner: Arc<Polar>,
     host: Host,
 }
 
@@ -50,7 +67,18 @@ impl<T: FromPolar> FromPolar for Action<T> {
 }
 
 impl Oso {
-    /// Create a new instance of Oso. Each instance is separate and can have different rules and classes loaded into it.
+    /// Create a new instance of Oso.
+    ///
+    /// Each instance is separate and can have different rules and classes loaded into it.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```rust
+    /// # use oso::Oso;
+    /// let oso = Oso::new();
+    /// ```
     pub fn new() -> Self {
         let inner = Arc::new(polar_core::polar::Polar::new());
         let host = Host::new(inner.clone());
@@ -66,13 +94,16 @@ impl Oso {
         oso
     }
 
-    /// High level interface for authorization decisions. Makes an allow query with the given actor, action and resource and returns true or false.
+    /// Test if an `actor` is allowed to perform an `action` on a `resource`.
+    ///
+    /// High level interface for authorization decisions. Makes an allow query with the given
+    /// actor, action and resource and returns `true` or `false`.
     pub fn is_allowed<Actor, Action, Resource>(
         &self,
         actor: Actor,
         action: Action,
         resource: Resource,
-    ) -> crate::Result<bool>
+    ) -> Result<bool>
     where
         Actor: ToPolar,
         Action: ToPolar,
@@ -87,8 +118,10 @@ impl Oso {
     }
 
     /// Get the actions actor is allowed to take on resource.
-    /// Returns a [std::collections::HashSet] of actions, typed according the return value.
+    /// Returns a [`HashSet`] of actions, typed according the return value.
+    ///
     /// # Examples
+    ///
     /// ```ignore
     /// oso.load_str(r#"allow(actor: Actor{name: "sally"}, action, resource: Widget{id: 1}) if
     ///               action in ["CREATE", "READ"];"#);
